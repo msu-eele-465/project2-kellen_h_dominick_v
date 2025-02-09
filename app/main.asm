@@ -16,7 +16,7 @@ StopWDT     mov.w   #WDTPW+WDTHOLD,&WDTCTL  ; Stop WDT
 Setup_P6    
             bis.b   #BIT6,&P6DIR            
             bic.b   #BIT6,&P6OUT 
-            bic.w   #LOCKLPM5,  &PM5CTL0    ; turn on I/O                
+            ;bic.w   #LOCKLPM5,  &PM5CTL0    ; turn on I/O                
 
 Setup_Timer_B0
             bis.w   #TBCLR, &TB0CTL         
@@ -33,49 +33,49 @@ Setup_Compare
 ; bis.w     UCASTP_2    UCB0CTLW0 ; auto STOP mode
 
 main_loop
-            call    #i2c_init
-loop2       call    #i2c_start
-            call    #i2c_stop
-            ;call    #i2c_sda_delay
+            jmp     i2c_init
+loop2       jmp     i2c_start
+label       mov.w   #100,       R15
+forloop     dec.w   R15
+            jnz     forloop
             jmp     loop2
 
-i2c_init:
+i2c_init
             bis.w   #UCSWRST,   &UCB0CTLW0  ; put in SW RST
 
-            bic.w   #BIT3,      &P1SEL1     ; P1.3 = SCL
-            bis.w   #BIT3,      &P1SEL0
-            bic.w   #BIT2,      &P1SEL1     ; P1.2 = SDA
-            bis.w   #BIT2,      &P1SEL0
             bic.w   #BIT2,      &P1DIR      ; Ensure SDA is an input
             bic.w   #BIT3,      &P1DIR      ; Ensure SCL is an input
 
             ;bis.w   #BIT3       &P1REN
         
-            bis.w   #UCSSEL_3,  &UCB0CTLW0  ; choose SMCLK
+            bis.w   #UCSSEL__SMCLK,  &UCB0CTLW0  ; choose SMCLK
             mov.w   #10,        &UCB0BRW    ; set prescalar to 10
 
             bis.w   #UCMODE_3,  &UCB0CTLW0  ; put into I2C mode
             bis.w   #UCMST,     &UCB0CTLW0  ; set as master
-
+            bis.w   #UCTR,      &UCB0CTLW0
             mov.w   #68h,       &UCB0I2CSA  ; set slave address
 
-            bis.w   #UCTXIE0,   &UCB0IE     ; local enable for TX0
+            bic.w   #BIT3,      &P1SEL1     ; P1.3 = SCL
+            bis.w   #BIT3,      &P1SEL0
+            bic.w   #BIT2,      &P1SEL1     ; P1.2 = SDA
+            bis.w   #BIT2,      &P1SEL0
+
+            bic.w   #LOCKLPM5,  &PM5CTL0
 
             bic.w   #UCSWRST,   &UCB0CTLW0  ; take B0 out of SW RST
+
+            bis.w   #UCTXIE0,   &UCB0IE     ; local enable for TX0
 
             NOP
             eint                            
             NOP
             
-            reti
+            jmp     loop2
 
-i2c_start:
-            bis.w   #UCTR,      &UCB0CTLW0  ; set to transmit mode
-            bis.w   #UCTXIFG0   &UCB0IFG    ; set TX flag
-            bis.w   #UCTXSTT,   &UCB0CTLW0  ; manually start message (START)
-clear       bit.w   #UCTXSTT,   &UCB0CTLW0  ; Clear UCTXSTT
-            jnz     clear
-            reti
+i2c_start
+            bis.w   #01000000b,    &UCB0CTLW0
+            jmp                 label
 
 i2c_stop:
             bis.w   #UCTXSTP,   &UCB0CTLW0  ; Send STOP condition
