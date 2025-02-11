@@ -47,6 +47,7 @@ main:
 
             call    #i2c_tx_slave_address
             call    #i2c_rx_ack
+            call    #i2c_stop
 
 loop        call    #i2c_start
 
