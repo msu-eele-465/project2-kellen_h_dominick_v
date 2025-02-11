@@ -155,3 +155,102 @@ clock2       bis.b   #BIT1,          &P2OUT      ;Drive SCL high
             ret
 
 ;-------------------------------------------------------------------------------------------------------------------------------------
+
+i2c_tx_ack:
+            bic.b   #BIT0,          &P2OUT      ;Drive SDA low
+            bis.b   #BIT1,          &P2OUT      ;Drive SCL high   
+
+            NOP                                 ;Delay for SCL high time
+            NOP
+            NOP
+            NOP
+            NOP
+            NOP
+            NOP
+            NOP
+            NOP
+            NOP
+            NOP
+
+            bic.b   #BIT1,          &P2OUT      ;Drive SCL low
+
+            ret
+
+;-------------------------------------------------------------------------------------------------------------------------------------
+
+i2c_rx_ack:
+            bic.b   #BIT0,          &P2DIR      ;Set SDA as input
+
+            bis.b   #BIT1,          &P2OUT      ;Drive SCL high
+
+            bit.b   #10000000b,     &P2IN
+            jz      ACK
+
+            call    #i2c_stop
+ACK     
+            NOP                                 ;Delay for SCL high time
+            NOP
+            NOP
+            NOP
+            NOP
+            NOP
+            NOP
+            NOP
+            NOP
+            NOP
+            NOP
+
+            bic.b   #BIT1,          &P2OUT      ;Drive SCL low
+
+            bis.b   #BIT0,          &P2DIR      ;Set SDA as output
+
+            ret
+
+;-------------------------------------------------------------------------------------------------------------------------------------
+
+i2c_rx_byte:
+            bic.b   #BIT0,          &P2DIR      ;Set SDA as input
+
+            mov.w   #8,             R11
+            mov.w   #0,             R12
+
+shift_loop  bis.b   #BIT1,          &P2OUT      ;Drive SCL high
+
+            rrc.b   R12                         ;Logical shift right
+            bit.b   #10000000b,     &P2IN       ;Check if received bit is 1
+            jz      P2_0                        ;If not, don't set new MSB to 1
+            bis.b   #10000000b,     R12         ;If so, set new MSB to 1
+
+P2_0        
+
+            NOP                                 ;Delay for SCL high time
+            NOP
+            NOP
+            NOP
+
+            bic.b   #BIT1,          &P2OUT      ;Drive SCL low
+            dec.w   R11
+            jnz     shift_loop
+
+            ret
+
+;-------------------------------------------------------------------------------------------------------------------------------------
+
+;------------------------------------------------------------------------------
+;  ISRs
+;------------------------------------------------------------------------------
+ISR_TB0_CCR0:
+            xor.b   #BIT6,  &P6OUT          ; Toggle LED 2
+            bic.w   #CCIFG, &TB0CCTL0       ; Clear interrupt flag
+            reti
+
+;------------------------------------------------------------------------------
+;           Interrupt Vectors
+;------------------------------------------------------------------------------
+            .sect   RESET_VECTOR            ; MSP430 RESET Vector
+            .short  RESET                   ;
+
+            .sect   TIMER0_B0_VECTOR        ; Timer B0 CCR0 Vector
+            .short  ISR_TB0_CCR0
+
+            .end
