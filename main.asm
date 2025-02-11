@@ -84,3 +84,74 @@ i2c_stop:
             ret
 
 ;-------------------------------------------------------------------------------------------------------------------------------------
+
+;Working
+i2c_tx_slave_address:
+            mov.w   #8,             R15         ;Repeat shift_byte 8 times...
+                  
+shift_byte  bit.b   #10000000b,     R14         ;Test MSB of tx_byte
+            jz      ifzero                      ;If MSB of tx_byte is 0, leave SDA low
+
+            bis.b   #BIT0,          &P2OUT      ;If MSB of tx_byte is 1, drive SDA high
+            jmp     clock
+
+ifzero      bic.b   #BIT0,          &P2OUT
+
+clock       bis.b   #BIT1,          &P2OUT      ;Drive SCL high
+
+            NOP                                 ;Delay for SCL high time
+            NOP
+            NOP
+            NOP
+            NOP
+            NOP
+            NOP
+            NOP
+            NOP
+            NOP
+            NOP
+
+            bic.b   #BIT1,          &P2OUT      ;Drive SCL low
+
+            rla.b   R14                         ;Shift bits to the left arithmetically    
+            dec.w   R15
+            jnz     shift_byte                  ;If there are more bits to transmit, continue 
+
+            ret
+
+;-------------------------------------------------------------------------------------------------------------------------------------
+
+i2c_tx_byte:
+            mov.w   #8,             R10         ;Repeat shift_byte 8 times...   
+
+shift_byte2  bit.b   #10000000b,     R9          ;Test MSB of tx_byte
+            jz      ifzero2                      ;If MSB of tx_byte is 0, leave SDA low
+
+            bis.b   #BIT0,          &P2OUT      ;If MSB of tx_byte is 1, drive SDA high
+            jmp     clock2
+
+ifzero2      bic.b   #BIT0,          &P2OUT
+
+clock2       bis.b   #BIT1,          &P2OUT      ;Drive SCL high
+
+            NOP                                 ;Delay for SCL high time
+            NOP
+            NOP
+            NOP
+            NOP
+            NOP
+            NOP
+            NOP
+            NOP
+            NOP
+            NOP
+
+            bic.b   #BIT1,          &P2OUT      ;Drive SCL low
+
+            rla.b   R9                          ;Shift bits to the left arithmetically    
+            dec.w   R10
+            jnz     shift_byte2                  ;If there are more bits to transmit, continue 
+
+            ret
+
+;-------------------------------------------------------------------------------------------------------------------------------------
