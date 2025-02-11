@@ -54,3 +54,33 @@ i2c_init:
             bis.b   #BIT0 + BIT1,   &P2OUT    ;Start SDA and SCL in idle state (high)
                         
             ret
+
+;-------------------------------------------------------------------------------------------------------------------------------------
+
+;All timing requirements met
+i2c_start:
+            bic.b   #BIT0,          &P2OUT      ;Drive SDA low
+            
+            NOP                                 ;Delay ~5.712us (>4.7us) (start setup)
+
+            bic.b   #BIT1,          &P2OUT      ;Drive SCL low
+
+            NOP                                 ;Delay ~5.712us (>4.0us) (start hold)
+
+            ret
+
+;-------------------------------------------------------------------------------------------------------------------------------------
+
+;All timing requirements met
+i2c_stop:
+            bis.b   #BIT1,          &P2OUT      ;Drive SCL high
+
+            NOP                                 ;Delay ~5.712us (>4.0us) (stop setup)
+
+            bis.b   #BIT0,          &P2OUT      ;Drive SDA high
+
+            NOP                                 ;Delay ~5.712us (>4.7us) (stop hold)
+
+            ret
+
+;-------------------------------------------------------------------------------------------------------------------------------------
