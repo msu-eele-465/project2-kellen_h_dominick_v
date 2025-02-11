@@ -1,3 +1,4 @@
+;******************************************************************************
             .cdecls C,LIST,"msp430.h"  ; Include device header file
 ;-------------------------------------------------------------------------------
             .def    RESET                   ; Export program entry-point to
@@ -10,16 +11,12 @@
             .retainrefs
 
 RESET       mov.w   #__STACK_END,SP         ; Initialize stack pointer
-StopWDT     mov.w   #WDTPW+WDTHOLD,&WDTCTL  ; Stop WDT
-
-Setup_P1    bic.b   #BIT0,&P1OUT            
-            bis.b   #BIT0,&P1DIR            
-            bic.w   #LOCKLPM5,&PM5CTL0      
+StopWDT     mov.w   #WDTPW+WDTHOLD,&WDTCTL  ; Stop WDT  
 
 Setup_P6    
             bis.b   #BIT6,&P6DIR            
-            bic.b   #BIT6,&P6OUT            
-            bic.w   #LOCKLPM5,&PM5CTL0      
+            bic.b   #BIT6,&P6OUT 
+            bic.w   #LOCKLPM5,  &PM5CTL0    ; turn on I/O                
 
 Setup_Timer_B0
             bis.w   #TBCLR, &TB0CTL         
@@ -27,41 +24,33 @@ Setup_Timer_B0
             bis.w   #MC__UP, &TB0CTL        
 
 Setup_Compare
-            mov.w   #16384, &TB0CCR0        
-            bis.w   #CCIE,  &TB0CCTL0       
+            mov.w   #16384, &TB0CCR0
+            bis.w   #CCIE,  &TB0CCTL0
+            NOP 
+            eint 
             NOP
-            eint                            
-            NOP
-            bic.w   #CCIFG, &TB0CCTL0    
+            bic.w   #CCIFG, &TB0CCTL0
 
-Mainloop    xor.b   #BIT0,&P1OUT            
-            jmp     FlashRed
+;-------------------------------------------------------------------------------------------------------------------------------------
 
-FlashRed:
+main:
+            call    #i2c_init
+loop        mov.w   #69h,           R14
+            mov.w   #00h,           R9 
+            call    #i2c_start        
+            call    #i2c_tx_slave_address
+            call    #i2c_rx_ack
+            call    #i2c_stop
+            jmp     loop
 
-WaitOuter   mov.w   #4,R14                  
-WaitInner   mov.w   #43750,R15              
-L1          dec.w   R15                     
-            jnz     L1                      
-            dec.w   R14                     
-            jnz     WaitInner               
-            jmp     Mainloop                
-            NOP
+;-------------------------------------------------------------------------------------------------------------------------------------
 
-;------------------------------------------------------------------------------
-;  ISRs
-;------------------------------------------------------------------------------
-ISR_TB0_CCR0:
-            xor.b   #BIT6,  &P6OUT          ; Toggle LED 2
-            bic.w   #CCIFG, &TB0CCTL0       ; Clear interrupt flag
-            reti
-
-;------------------------------------------------------------------------------
-;           Interrupt Vectors
-;------------------------------------------------------------------------------
-            .sect   RESET_VECTOR            ; MSP430 RESET Vector
-            .short  RESET                   ;
-
-            .sect   TIMER0_B0_VECTOR        ; Timer B0 CCR0 Vector
-            .short  ISR_TB0_CCR0
-            .end
+;Expected behavior verified
+i2c_init:
+            bic.b   #BIT0 + BIT1,   &P2DIR    ;Set P2.0 and P2.1 as inputs to enable resistors
+            bis.b   #BIT0 + BIT1,   &P2REN    ;Enable P2.0 resistor
+            mov.b   #1,             &P2OUT    ;Set resistor as pull-up
+            bis.b   #BIT0 + BIT1,   &P2DIR    ;Set P2.0 and P2.1 as outputs (SDA = P2.0, SCL = P2.1)
+            bis.b   #BIT0 + BIT1,   &P2OUT    ;Start SDA and SCL in idle state (high)
+                        
+            ret
